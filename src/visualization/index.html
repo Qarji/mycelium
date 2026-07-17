@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Симуляция КИИ</title>
+    <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- БЛОК 1 — экран симуляции (граф, логи, управление) -->
+    <section id="sim-view">
+
+        <div id="topbar">
+            <span class="topbar-item">Симуляция распределённой сети КИИ</span>
+            <span id="scenario-alert"></span>
+            <span class="topbar-item">Тик: <span id="tick" class="highlight">0</span></span>
+            <span class="topbar-item">Средняя нагрузка сети: <span id="net_avg_load" class="highlight">0</span></span>
+        </div>
+
+        <div id="main">
+            <div id="cy-container">
+                <div id="cy"></div>
+                <div id="node-popup">
+                    <h4 id="popup-title">Узел #0</h4>
+                    <div class="stat"><span>Режим:</span> <span id="popup-mode" class="stat-val">-</span></div>
+                    <div class="stat"><span>Нагрузка (L):</span> <span id="popup-load" class="stat-val">-</span></div>
+                    <div class="stat"><span>Угроза (T):</span> <span id="popup-threat" class="stat-val">-</span></div>
+                    <div class="stat"><span>Соединений:</span> <span id="popup-connections" class="stat-val">-</span></div>
+                    <div class="stat"><span>Неверных Авт.:</span> <span id="popup-failed_auth" class="stat-val">-</span></div>
+                    <div class="stat"><span>Связей (⇄):</span> <span id="popup-edges" class="stat-val">-</span></div>
+                </div>
+            </div>
+
+            <div id="logs-panel">
+                <div id="logs-header">Журнал событий</div>
+                <div id="logs"></div>
+            </div>
+        </div>
+
+        <div id="scripts-menu">
+            <h4 style="margin: 0 0 10px 0; color: #fff; border-bottom: 1px solid #555; padding-bottom: 4px;">Запуск сценария</h4>
+            <div>
+                <label>Сценарий:</label>
+                <select id="scenario-select">
+                    <option value="ddos">DDoS атака</option>
+                    <option value="underscale">Падение нагрузки</option>
+                    <option value="brute_force">Brute Force</option>
+                    <option value="ai_crash">Отказ ИИ</option>
+                    <option value="node_infection">Заражение узла</option>
+                    <option value="network_partition">Разрыв сети (Изоляция)</option>
+                </select>
+            </div>
+            <div>
+                <label>Цель:</label>
+                <select id="target-select">
+                    <option value="All">Все узлы</option>
+                    <option value="Random">Случайный узел</option>
+                </select>
+            </div>
+            <div>
+                <label>Длительность (тиков):</label>
+                <input type="number" id="duration-input" min="1" step="1" value="10" inputmode="numeric">
+                <div id="duration-hint">Осталось до конца: <span id="duration-remaining">—</span></div>
+                <div id="duration-error"></div>
+            </div>
+            <button class="btn danger" id="btn-apply-script" style="width: 100%;">Применить</button>
+        </div>
+
+        <div id="history-menu">
+            <h4 style="margin: 0 0 10px 0; color: #fff; border-bottom: 1px solid #555; padding-bottom: 4px;">История сценариев</h4>
+            <table id="history-table">
+                <thead>
+                    <tr><th>Тик</th><th>Сценарий</th><th>Цель</th><th>Длит.</th></tr>
+                </thead>
+                <tbody id="history-tbody">
+                    <tr id="history-empty-row"><td colspan="4">Сценарии ещё не применялись</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="bottom-bar">
+            <button class="btn primary" id="btn-run">Run</button>
+            <button class="btn" id="btn-stop">Stop</button>
+            <button class="btn" id="btn-restart">Restart</button>
+            <button class="btn" id="btn-scripts" style="margin-left: 20px;">Scripts</button>
+            <button class="btn" id="btn-history">Scripts History</button>
+            <span id="scroll-hint">Аналитика ниже ▾</span>
+        </div>
+
+    </section>
+
+    <!-- БЛОК 2 — раздел инфографики -->
+    <section id="dashboard">
+
+        <div id="dash-header">
+            <div>
+                <div id="dash-title">Аналитика поведения сети</div>
+                <div id="dash-subtitle">Сводные показатели с начала текущего запуска симуляции</div>
+            </div>
+            <div id="dash-meta">
+                <div class="dash-meta-item"><span class="dash-meta-label">Тиков записано</span><span class="dash-meta-val" id="dm-ticks">0</span></div>
+                <div class="dash-meta-item"><span class="dash-meta-label">Решений принято</span><span class="dash-meta-val" id="dm-decisions">0</span></div>
+                <div class="dash-meta-item"><span class="dash-meta-label">Отклонил Supervisor</span><span class="dash-meta-val" id="dm-rejected">0</span></div>
+                <div class="dash-meta-item"><span class="dash-meta-label">Каскадов предотвращено</span><span class="dash-meta-val" id="dm-cascades">0</span></div>
+            </div>
+        </div>
+
+        <div id="dash-grid">
+            <!-- свечной график load / threat по сети во времени -->
+            <div class="panel panel-wide">
+                <div class="panel-head">
+                    <span class="panel-title">Нагрузка сети во времени</span>
+                    <span class="panel-note">свечи: разброс нагрузки между узлами за тик⠀⠀·⠀⠀корреляция между угрозой и нагрузкой</span>
+                </div>
+                <canvas id="chart-candles"></canvas>
+                <div class="panel-legend">
+                    <span><i class="dot" style="background:#1dc943"></i>нагрузка ↓ к тику</span>
+                    <span><i class="dot" style="background:#d32f2f"></i>нагрузка ↑ к тику</span>
+                    <span><i class="dot" style="background:#4fc1ff"></i>средняя угроза T</span>
+                </div>
+            </div>
+
+            <!-- тепловая карта миграции нагрузки -->
+            <div class="panel panel-wide">
+                <div class="panel-head">
+                    <span class="panel-title">Тепловая карта нагрузки</span>
+                    <span class="panel-note">строки — узлы, столбцы — тики, цвет — степень нагрузки⠀⠀·⠀⠀процесс распределения нагрузки во времени</span>
+                </div>
+                <canvas id="chart-heatmap"></canvas>
+                <div class="panel-legend" id="heatmap-legend"></div>
+            </div>
+
+            <!-- распределение режимов по времени (stacked area) -->
+            <div class="panel panel-wide">
+                <div class="panel-head">
+                    <span class="panel-title">Состав сети по режимам узлов</span>
+                    <span class="panel-note">доля узлов в определённых режимах на каждый тик</span>
+                </div>
+                <canvas id="chart-modes"></canvas>
+                <div class="panel-legend" id="modes-legend"></div>
+            </div>
+
+            <!-- индекс распределённого консенсуса -->
+            <div class="panel panel-wide">
+                <div class="panel-head">
+                    <span class="panel-title">Индекс распределённого консенсуса</span>
+                    <span class="panel-note">коллективные голоса соседей: ReduceLoad / BoostLoad / PeerSuspicion</span>
+                </div>
+                <canvas id="chart-consensus"></canvas>
+                <div class="panel-legend" id="consensus-legend"></div>
+            </div>
+
+            <!-- решения supervisor — allowed vs rejected по типу действия -->
+            <div class="panel">
+                <div class="panel-head">
+                    <span class="panel-title">Валидация решений Supervisor'ом</span>
+                    <span class="panel-note">каждое предложение AI/эвристики проходит детерминированную проверку до применения</span>
+                </div>
+                <canvas id="chart-decisions"></canvas>
+                <div class="panel-legend">
+                    <span><i class="dot" style="background:#4caf50"></i>разрешено</span>
+                    <span><i class="dot" style="background:#f44336"></i>отклонено</span>
+                </div>
+            </div>
+
+            <!-- источник решения — кто инициировал действие -->
+            <div class="panel">
+                <div class="panel-head">
+                    <span class="panel-title">Источник инициативы</span>
+                    <span class="panel-note">доля действий сети, принятых без участия ИИ (детерминированные/эвристические пути)</span>
+                </div>
+                <canvas id="chart-sources"></canvas>
+                <div class="panel-legend" id="sources-legend"></div>
+            </div>
+
+            <!-- давление на сеть и риск каскада -->
+            <div class="panel">
+                <div class="panel-head">
+                    <span class="panel-title">Давление на сеть и риск каскада</span>
+                    <span class="panel-note">показатель общего давления сети по нагрузке</span>
+                </div>
+                <canvas id="chart-gauge"></canvas>
+            </div>
+
+            <!-- уверенность ИИ vs фактическая угроза -->
+            <div class="panel">
+                <div class="panel-head">
+                    <span class="panel-title">Уверенность ИИ vs Фактическая угроза</span>
+                    <span class="panel-note">threat_score и confidence во времени; маркеры — срабатывание фоллбека assess_neighbor_threat при сбое ИИ</span>
+                </div>
+                <canvas id="chart-ai-confidence"></canvas>
+                <div class="panel-legend" id="ai-confidence-legend"></div>
+            </div>
+
+            <!-- восстановление топологии: виртуальные мосты -->
+            <div class="panel panel-wide">
+                <div class="panel-head">
+                    <span class="panel-title">Восстановление топологии: виртуальные мосты</span>
+                    <span class="panel-note">площади отражают долю связей — виртуальные мосты частично компенсирует потерю физических при разрывах сети</span>
+                </div>
+                <canvas id="chart-bridges"></canvas>
+                <div class="panel-legend" id="bridges-legend"></div>
+            </div>
+
+        </div>
+
+        <div id="dash-footnote">
+            Данные собираются на клиенте по мере поступления тиков из WebSocket-потока (без обращения к файловым логам).
+            Перезапуск симуляции (Restart) очищает накопленную историю.
+        </div>
+
+    </section>
+
+    <script src="main.js"></script>
+    <script src="dashboard.js"></script>
+    <script src="dashboard-extra.js"></script>
+</body>
+</html>

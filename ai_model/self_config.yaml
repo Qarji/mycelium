@@ -1,0 +1,132 @@
+classes:
+  - id: 0
+    name: "normal_operation"
+    action: "do_nothing"
+    base_threat: 0.00
+    reason: "All metrics within normal bounds; no action required"
+  - id: 1
+    name: "high_load_hardware_strain"
+    action: "reduce_load"
+    base_threat: 0.30
+    reason: "Self load critically high — hardware thermal/CPU limit likely"
+  - id: 2
+    name: "high_load_network_overload"
+    action: "reduce_load"
+    base_threat: 0.35
+    reason: "High load driven by network demand surge across neighbors"
+  - id: 3
+    name: "high_load_neighbor_failure_relay"
+    action: "reduce_load"
+    base_threat: 0.45
+    reason: "Load elevated due to failed neighbors redirecting traffic"
+  - id: 4
+    name: "high_load_anomalous_activity"
+    action: "reduce_load"
+    base_threat: 0.55
+    reason: "Load spike correlated with anomalous network activity pattern"
+  - id: 5
+    name: "load_below_normal"
+    action: "increase_load"
+    base_threat: 0.20
+    reason: "Load on node is below its capacity"
+  - id: 6
+    name: "load_on_network_has_increased"
+    action: "increase_load"
+    base_threat: 0.15
+    reason: "Overall load on network has increased due to large amount of data"
+  - id: 7
+    name: "low_load_neighbor_failure_relay"
+    action: "increase_load"
+    base_threat: 0.35
+    reason: "Load reduced due to failure of traffic redirection by neighboring nodes"
+  - id: 8
+    name: "malware_detected"
+    action: "enter_isolation"
+    base_threat: 0.80
+    reason: "High threat score with integrity/auth signals — malicious code suspected"
+  - id: 9
+    name: "auth_bruteforce_detected"
+    action: "enter_isolation"
+    base_threat: 0.75
+    reason: "Repeated auth failures indicate brute-force attack"
+  - id: 10
+    name: "integrity_violation"
+    action: "enter_isolation"
+    base_threat: 0.90
+    reason: "Integrity check failed — node state cannot be trusted"
+  - id: 11
+    name: "peer_consensus_isolation"
+    action: "enter_isolation"
+    base_threat: 0.85
+    reason: "Multiple neighbors flagged this node as compromised"
+  - id: 12
+    name: "neighbor_cascade_failure"
+    action: "enter_isolation"
+    base_threat: 0.70
+    reason: "Multiple neighbors in isolation — cascade failure risk"
+  - id: 13
+    name: "reconnect_timeout_failure"
+    action: "enter_isolation"
+    base_threat: 0.85
+    reason: "Neighbors refused or timed out during reconnection"
+  - id: 14
+    name: "recovery_conditions_met"
+    action: "begin_reconnect"
+    base_threat: 0.10
+    reason: "Integrity verified and threat cleared — ready to reconnect"
+  - id: 15
+    name: "network_partition_healing"
+    action: "exit_isolation"
+    base_threat: 0.05
+    reason: "Reconnect handshake completed — returning to normal operation"
+
+hyperparameters:
+  mlp_network:
+    base_features: 29
+    history_size: 8
+    hidden1_size: 128
+    hidden2_size: 94
+    hidden3_size: 64
+    threat_hidden_size: 32
+  expert_system:
+    weight_min: 0.25
+    weight_max: 0.75
+    weight_on_error: 1.0
+  entropy:
+    midpoint: 0.55
+    sharpness: 10.0
+
+feature_normalization:
+  load_max: 200.0
+  temperature_max: 110.0
+  temperature_offset: 20.0
+  active_connections_max: 1000.0
+  failed_auth_count_max: 20.0
+  last_sync_age_sec_max: 3600.0
+  neighbor_count_norm: 10.0
+
+semantic_thresholds:
+  hardware_strain:
+    load_min: 0.50
+    temp_min: 0.55
+  critical_strain:
+    temp_min: 0.90
+  network_overload:
+    self_load_min: 0.50
+    neighbors_avg_load_min: 0.40
+  auth_attack:
+    failed_auth_min: 0.30
+    auth_anomaly_min: 0.45
+  integrity_critical:
+    integrity_ok_max: 0.50
+    auth_anomaly_min: 0.90
+  isolation_risk:
+    iso_ratio_min: 0.25
+  low_load_anomaly:
+    self_load_max: 0.30
+  healthy_state:
+    integrity_ok_min: 0.80
+    failed_auth_max: 0.10
+    neighbors_max_threat_max: 0.3
+    suspicion_ratio_max: 0.10
+    self_load_max: 0.55

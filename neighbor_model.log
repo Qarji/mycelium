@@ -1,0 +1,2 @@
+00:08:51 [INFO] NeighborAI: Loaded trained weights from C:\Users\Yaroslav\Desktop\htr\mycelium_light\ai_model\neighbor_weights.pth
+00:08:51 [INFO] NeighborAI: [NeighborAI] Evaluator v1.1 — expert(40%) + MLP(60%) | Features: 55 (Tabular) + 64 (History) -> 64\u219232\u21921
