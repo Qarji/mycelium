@@ -370,7 +370,7 @@ impl Network {
 
             for link in new_links {
                 let (from_id, to_id) = (self.nodes[link.from].id, self.nodes[link.to].id);
-                tracing::info!("🌉✅ Virtual bridge established: Node {} <-> Node {}", from_id, to_id);
+                tracing::info!("Virtual bridge established: Node {} <-> Node {}", from_id, to_id);
                 self.links.push(link);
             }
 
@@ -436,7 +436,7 @@ impl Network {
         if !redundant_pairs.is_empty() {
             self.links.retain(|l| {
                 if l.virtual_link && redundant_pairs.contains(&(l.from, l.to)) {
-                    tracing::info!("🔗✂ Removing redundant virtual bridge between Node {} and Node {}", self.nodes[l.from].id, self.nodes[l.to].id);
+                    tracing::info!("Removing redundant virtual bridge between Node {} and Node {}", self.nodes[l.from].id, self.nodes[l.to].id);
                     false
                 } else {
                     true

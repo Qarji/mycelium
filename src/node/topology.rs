@@ -290,16 +290,14 @@ impl Node {
         outgoing
     }
 
-    /// Шаг 3: получатель запроса решает, принять ли мост.
-    /// Проверка state-to-state — как handshake перед доверием новому пиру.
+    /// Шаг 3: получатель запроса решает, принять ли мост
     pub fn handle_virtual_bridge_request(&mut self, request: &NodeSignal, current_tick: u64,) -> NodeSignal {
         let sec = &self.config.security;
 
         let requester_untrusted = request.threat_score > sec.threat_score_isolation || request.mode == Mode::Isolated
             || matches!(request.ai_state_reason.as_str(), "malware_detected" | "auth_bruteforce_detected" | "integrity_violation");
 
-        // Получатель тоже не должен быть скомпрометирован — иначе он не вправе
-        // сам себе разрешать новые входящие каналы
+        // Получатель тоже не должен быть скомпрометирован
         let self_untrusted = self.state.mode == Mode::Isolated
             || matches!(
                 self.state.ai_state_reason.as_str(),
