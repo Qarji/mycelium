@@ -1,0 +1,10 @@
+19:35:44 [INFO] NeighborAI: Loaded trained weights from C:\Users\Yaroslav\Desktop\htr\mycelium\ai_model\neighbor_weights.pth
+19:35:44 [INFO] NeighborAI: [NeighborAI] Evaluator v1.1 — expert(40%) + MLP(60%) | Features: 55 (Tabular) + 64 (History) -> 64\u219232\u21921
+19:39:00 [INFO] NeighborAI: Loaded trained weights from C:\Users\Yaroslav\Desktop\htr\mycelium\ai_model\neighbor_weights.pth
+19:39:00 [INFO] NeighborAI: [NeighborAI] Evaluator v1.1 — expert(40%) + MLP(60%) | Features: 55 (Tabular) + 64 (History) -> 64\u219232\u21921
+19:47:55 [INFO] NeighborAI: Loaded trained weights from C:\Users\Yaroslav\Desktop\htr\mycelium\ai_model\neighbor_weights.pth
+19:47:55 [INFO] NeighborAI: [NeighborAI] Evaluator v1.1 — expert(40%) + MLP(60%) | Features: 55 (Tabular) + 64 (History) -> 64\u219232\u21921
+19:49:16 [INFO] NeighborAI: Loaded trained weights from C:\Users\Yaroslav\Desktop\htr\mycelium\ai_model\neighbor_weights.pth
+19:49:16 [INFO] NeighborAI: [NeighborAI] Evaluator v1.1 — expert(40%) + MLP(60%) | Features: 55 (Tabular) + 64 (History) -> 64\u219232\u21921
+19:55:31 [INFO] NeighborAI: Loaded trained weights from C:\Users\Yaroslav\Desktop\htr\mycelium\ai_model\neighbor_weights.pth
+19:55:31 [INFO] NeighborAI: [NeighborAI] Evaluator v1.1 — expert(40%) + MLP(60%) | Features: 55 (Tabular) + 64 (History) -> 64\u219232\u21921

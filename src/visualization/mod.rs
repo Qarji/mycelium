@@ -8,6 +8,12 @@ use tokio::sync::Mutex;
 use warp::Filter;
 use futures_util::{StreamExt, SinkExt};
 
+const INDEX_HTML: &str = include_str!("index.html");
+const MAIN_JS: &str = include_str!("main.js");
+const DASHBOARD_JS: &str = include_str!("dashboard.js");
+const DASHBOARD_EXTRA_JS: &str = include_str!("dashboard-extra.js");
+const STYLE_CSS: &str = include_str!("style.css");
+
 #[derive(Serialize)]
 pub struct VisualNode {
     pub id: u32,
@@ -91,7 +97,7 @@ pub fn build_visual_state(network: &Network, since_tick: u64) -> VisualState {
     let boosted_count = latest_by_source.values().filter(|s| s.mode == crate::node::Mode::Boosted).count() as u32;
     let total_load: u32 = latest_by_source.values().map(|s| s.load as u32).sum();
     let total_capacity: u32 = active_count * boost_ceiling;
-
+    
     let network_utilization = if total_capacity > 0 { total_load as f32 / total_capacity as f32 } else { 0.0 };
     let network_starving = active_count > 0 && boosted_count > active_count / 2;
 
@@ -133,7 +139,7 @@ pub async fn run_server(network: Arc<Mutex<Network>>, control: SimControl) {
     let net_filter     = warp::any().map(move || network.clone());
     let control_filter = warp::any().map(move || control.clone());
 
-    let route = warp::path("ws")
+    let ws_route = warp::path("ws")
         .and(warp::ws())
         .and(net_filter)
         .and(control_filter)
@@ -141,7 +147,30 @@ pub async fn run_server(network: Arc<Mutex<Network>>, control: SimControl) {
             ws.on_upgrade(move |socket| handle_connection(socket, network, control))
         });
 
-    warp::serve(route).run(([127, 0, 0, 1], 3030)).await;
+    let index_route = warp::path::end()
+        .map(|| warp::reply::html(INDEX_HTML));
+
+    let main_js_route = warp::path("main.js")
+        .map(|| warp::reply::with_header(MAIN_JS, "content-type", "application/javascript"));
+
+    let dashboard_js_route = warp::path("dashboard.js")
+        .map(|| warp::reply::with_header(DASHBOARD_JS, "content-type", "application/javascript"));
+
+    let dashboard_extra_js_route = warp::path("dashboard-extra.js")
+        .map(|| warp::reply::with_header(DASHBOARD_EXTRA_JS, "content-type", "application/javascript"));
+
+    let style_css_route = warp::path("style.css")
+        .map(|| warp::reply::with_header(STYLE_CSS, "content-type", "text/css"));
+
+    let routes = index_route
+        .or(main_js_route)
+        .or(dashboard_js_route)
+        .or(dashboard_extra_js_route)
+        .or(style_css_route)
+        .or(ws_route);
+
+    tracing::info!("Сервер запущен на http://127.0.0.1:3030 (HTML/JS/CSS встроены в бинарник)");
+    warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
 }
 
 async fn handle_connection(

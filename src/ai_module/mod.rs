@@ -229,6 +229,7 @@ impl AIFeatureBuilder {
 }
 
 struct AiProcess {
+    interpreter: PathBuf,
     path: PathBuf,
     process: Child,
     stdin: ChildStdin,
@@ -236,18 +237,27 @@ struct AiProcess {
 }
 
 impl AiProcess {
-    fn spawn(path: PathBuf) -> Result<Self, Box<dyn std::error::Error>> {
-        let mut process = Command::new("python")
+    /// `interpreter` — путь к python-исполняемому файлу (portable-дистрибутив
+    /// рядом с exe в релизе, либо системный "python"/"python3" при разработке).
+    /// `path` — путь к .py-скрипту, который будет выполнен этим интерпретатором.
+    fn spawn(interpreter: PathBuf, path: PathBuf) -> Result<Self, Box<dyn std::error::Error>> {
+        let mut process = Command::new(&interpreter)
             .arg(&path)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit())
-            .spawn()?;
+            .spawn()
+            .map_err(|e| -> Box<dyn std::error::Error> {
+                format!(
+                    "Не удалось запустить Python-процесс (интерпретатор: {:?}, скрипт: {:?}): {}",
+                    interpreter, path, e
+                ).into()
+            })?;
 
         let stdin = process.stdin.take().unwrap();
         let stdout = BufReader::new(process.stdout.take().unwrap());
 
-        Ok(Self { path, process, stdin, stdout })
+        Ok(Self { interpreter, path, process, stdin, stdout })
     }
 
     /// Универсальный метод для отправки JSON и получения ответа
@@ -271,7 +281,7 @@ impl AiProcess {
     fn restart(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let _ = self.process.kill();
         let _ = self.process.wait();
-        *self = Self::spawn(self.path.clone())?;
+        *self = Self::spawn(self.interpreter.clone(), self.path.clone())?;
         Ok(())
     }
 }
@@ -283,10 +293,12 @@ pub struct AIModelPool {
 }
 
 impl AIModelPool {
-    pub fn new(node_path: PathBuf, neighbor_path: PathBuf) -> Result<Arc<Self>, Box<dyn std::error::Error>> {
+    /// `interpreter` — единый путь к Python-интерпретатору, используемый
+    /// для запуска обоих скриптов (self-модель и neighbor-модель).
+    pub fn new(interpreter: PathBuf, node_path: PathBuf, neighbor_path: PathBuf) -> Result<Arc<Self>, Box<dyn std::error::Error>> {
         Ok(Arc::new(Self {
-            node_model: Mutex::new(AiProcess::spawn(node_path)?),
-            neighbor_model: Mutex::new(AiProcess::spawn(neighbor_path)?),
+            node_model: Mutex::new(AiProcess::spawn(interpreter.clone(), node_path)?),
+            neighbor_model: Mutex::new(AiProcess::spawn(interpreter, neighbor_path)?),
         }))
     }
 

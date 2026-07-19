@@ -11,7 +11,7 @@ mod control;
 mod scenarios;
 
 use std::collections::{HashMap, VecDeque};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use node::{Node, NodeState, Mode};
@@ -23,6 +23,45 @@ use visualization::run_server;
 use config::Config;
 use persistence::NetworkLogger;
 use control::SimControl;
+
+fn app_dir() -> PathBuf {
+    if cfg!(debug_assertions) {
+        if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
+            return PathBuf::from(manifest_dir);
+        }
+    }
+    std::env::current_exe()
+        .expect("Не удалось определить путь к текущему исполняемому файлу")
+        .parent()
+        .expect("У исполняемого файла нет родительской директории")
+        .to_path_buf()
+}
+
+fn resolve_python_interpreter(base_dir: &Path) -> PathBuf {
+    let candidates = if cfg!(target_os = "windows") {
+        vec![base_dir.join("python-dist").join("python.exe")]
+    } else {
+        vec![
+            base_dir.join("python-dist").join("bin").join("python3"),
+            base_dir.join("python-dist").join("bin").join("python"),
+        ]
+    };
+
+    for candidate in &candidates {
+        if candidate.is_file() {
+            tracing::info!("Используется portable Python: {:?}", candidate);
+            return candidate.clone();
+        }
+    }
+
+    let fallback = if cfg!(target_os = "windows") { "python" } else { "python3" };
+    tracing::warn!(
+        "Portable Python не найден в {:?} — используется системный '{}'. \
+         Для дистрибуции убедитесь, что папка python-dist/ лежит рядом с исполняемым файлом.",
+        base_dir.join("python-dist"), fallback
+    );
+    PathBuf::from(fallback)
+}
 
 
 fn create_node(id: u32, cfg: Arc<Config>, ai_pool: Arc<AIModelPool>) -> Node {
@@ -89,20 +128,28 @@ async fn main() {
         .with_env_filter("info") 
         .init();
     
+    let base_dir = app_dir();
+    tracing::info!("Базовая директория приложения: {:?}", base_dir);
+
     let cfg = Config::load_default();
-    let logger = NetworkLogger::open(&cfg.persistence.log_dir, cfg.persistence.flush_every_ticks).expect("Cannot open network logs");
+
+    let log_dir = base_dir.join(&cfg.persistence.log_dir);
+    let logger = NetworkLogger::open(&log_dir, cfg.persistence.flush_every_ticks)
+        .expect("Cannot open network logs");
 
     match logger.last_tick() {
         Some(last) => tracing::info!("Resuming from tick {} (log history preserved)", last),
         None => tracing::info!("Starting fresh simulation"),
     }
 
-    let model_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(&cfg.ai.self_model_path);
-    let neighbor_model_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(&cfg.ai.neighbor_model_path);
-    let ai_pool = match AIModelPool::new(model_path.clone(), neighbor_model_path.clone()) {
+    let python_interpreter = resolve_python_interpreter(&base_dir);
+    let model_path = base_dir.join(&cfg.ai.self_model_path);
+    let neighbor_model_path = base_dir.join(&cfg.ai.neighbor_model_path);
+
+    let ai_pool = match AIModelPool::new(python_interpreter.clone(), model_path.clone(), neighbor_model_path.clone()) {
         Ok(pool) => pool,
         Err(e) => {
-            eprintln!("Не удалось инициализировать ИИ-процессы. Нет необходимых '.py' файлов по путям:\n - {:?}\n - {:?}", model_path, neighbor_model_path);
+            eprintln!("Не удалось инициализировать ИИ-процессы. Нет необходимых файлов по путям:\n - интерпретатор: {:?}\n - {:?}\n - {:?}", python_interpreter, model_path, neighbor_model_path);
             eprintln!("Техническая деталь: {}", e);
             
             std::process::exit(1); 
@@ -141,6 +188,16 @@ async fn main() {
 
             let interval = sim_cfg.simulation.tick_interval_ms;
             tokio::time::sleep(std::time::Duration::from_millis(interval)).await;
+        }
+    });
+
+    let server_url = "http://127.0.0.1:3030";
+    tokio::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(400)).await;
+        if let Err(e) = webbrowser::open(server_url) {
+            tracing::warn!("Не удалось автоматически открыть браузер ({}). Откройте вручную: {}", e, server_url);
+        } else {
+            tracing::info!("Браузер открыт на {}", server_url);
         }
     });
 

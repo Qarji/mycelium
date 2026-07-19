@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Симуляция КИИ</title>
+    <title>Эмуляция КИИ</title>
     <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -154,7 +154,7 @@
             <!-- решения supervisor — allowed vs rejected по типу действия -->
             <div class="panel">
                 <div class="panel-head">
-                    <span class="panel-title">Валидация решений Supervisor'ом</span>
+                    <span class="panel-title">Валидация решений Supervisor</span>
                     <span class="panel-note">каждое предложение AI/эвристики проходит детерминированную проверку до применения</span>
                 </div>
                 <canvas id="chart-decisions"></canvas>
@@ -187,7 +187,7 @@
             <div class="panel">
                 <div class="panel-head">
                     <span class="panel-title">Уверенность ИИ vs Фактическая угроза</span>
-                    <span class="panel-note">threat_score и confidence во времени; маркеры — срабатывание фоллбека assess_neighbor_threat при сбое ИИ</span>
+                    <span class="panel-note">оценки угрозы и уверенности ИИ во времени⠀⠀·⠀⠀маркеры — тики, при которых сработал фолбек</span>
                 </div>
                 <canvas id="chart-ai-confidence"></canvas>
                 <div class="panel-legend" id="ai-confidence-legend"></div>

@@ -29,8 +29,6 @@ const Dashboard = (() => {
     let lastNodesSnapshot = [];        // последний data.nodes как есть — для scatter
     let seenTicks = new Set();
 
-    // --- персистентность состояния через sessionStorage (переживает F5,
-    // чистится по Restart или при закрытии вкладки) ---
     const STORAGE_KEY = 'simDashboardState';
     const SAVE_DEBOUNCE_MS = 800;
     let saveTimer = null;
@@ -376,9 +374,8 @@ const Dashboard = (() => {
 
         actions.sort((a, b) => (decisionsByAction[b].allowed + decisionsByAction[b].rejected) - (decisionsByAction[a].allowed + decisionsByAction[a].rejected));
 
-        // --- ИЗМЕНЕНИЯ ТУТ: Увеличили отступы слева и справа ---
-        const padLeft = 145;   // Было 118 (теперь влезут даже самые длинные экшены)
-        const padRight = 75;   // Было 44 (теперь влезут большие числа вроде "999/999")
+        const padLeft = 145; 
+        const padRight = 75;
         const padTop = 8;
         const padBottom = 8;
         
@@ -386,7 +383,6 @@ const Dashboard = (() => {
         const plotW = w - padLeft - padRight;
         const maxTotal = Math.max(1, ...actions.map(a => decisionsByAction[a].allowed + decisionsByAction[a].rejected));
 
-        // --- ИЗМЕНЕНИЯ ТУТ: Сделали шрифт чуть компактнее (13px вместо 15px) ---
         ctx.font = "15px Consolas, monospace"; 
         
         actions.forEach((action, i) => {

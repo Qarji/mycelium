@@ -386,23 +386,20 @@ const DashboardExtra = (() => {
         if (utilizationHistory.length === 0) return emptyState(ctx, w, h, "Ожидание данных симуляции…");
 
         const latest = utilizationHistory[utilizationHistory.length - 1];
+        const rawLoad = latest.utilization * 100; 
         
-        // Ограничиваем значение жестко в диапазоне [0.0; 1.0], то есть [0; 100]%
-        const util = 0.71// Math.min(1.0, Math.max(0, latest.utilization)); 
-
-        // Теперь шкала абсолютно линейная от 0 до 100%
-        function getVisualProgress(u) {
-            return u;
+        function getSigmoidProgress(x) {
+            return 1 / (1 + Math.exp(-(x - 70) / 45));
         }
 
-        const utilVisual = getVisualProgress(util);
+        const util = getSigmoidProgress(rawLoad);
+        const utilVisual = util;
         const scale = 0.95; 
         const cx = w / 2;
         const cyc = h * 0.58; 
         const radius = Math.min(w * 0.34, h * 0.5) * scale;
         const a0 = degToRad(135), a1 = degToRad(405);
 
-        // Переразмечаем зоны равномерно внутри диапазона [0; 1]
         const zones = [
             { from: 0.0, to: 0.3, color: "#29b6f6" }, // Недостаток (<30%)
             { from: 0.3, to: 0.7, color: "#1dc943" }, // Норма (30%-70%)
@@ -453,7 +450,6 @@ const DashboardExtra = (() => {
         const needleAngle = a0 + (a1 - a0) * utilVisual;
         const nx = cx + Math.cos(needleAngle) * (radius - trackW * 0.7);
         const ny = cyc + Math.sin(needleAngle) * (radius - trackW * 0.7);
-        const ctxBeginPath = ctx.beginPath();
         ctx.beginPath();
         ctx.strokeStyle = "#e4e4e4";
         ctx.lineWidth = 2;
@@ -465,7 +461,6 @@ const DashboardExtra = (() => {
         ctx.arc(cx, cyc, 4, 0, Math.PI * 2);
         ctx.fill();
 
-        // Выводим проценты (теперь значение гарантированно не превысит 100%)
         ctx.fillStyle = "#e4e4e4";
         ctx.font = "bold 26px Consolas, monospace";
         ctx.textAlign = "center";
